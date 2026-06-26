@@ -1,0 +1,16 @@
+{
+  "colony_id": "kimi-gateway",
+  "colony_name": "Kimi-K2 Gateway",
+  "role": "llm-gateway",
+  "description": "High-capability LLM gateway powered by Kimi-K2 (1M context, MoE 1T params)",
+  "hive": "sovereign-hive",
+  "queen": "https://github.com/tehutirael/sovereign-hive-meta",
+  "repo": "https://github.com/tehutirael/kimi-k2",
+  "guilds": ["llm", "gateway", "reasoning"],
+  "health_endpoint": "/colony/health",
+  "manifest_endpoint": "/colony/manifest",
+  "agents": ["kimi-agent", "reasoning-agent"],
+  "capabilities": ["long-context", "reasoning", "code-generation", "1M-context", "MoE-1T"],
+  "server_port": 3333,
+  "constitution_version": "1.0.0"
+}
