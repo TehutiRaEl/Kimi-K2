@@ -1,16 +1,27 @@
 {
-  "colony_id": "kimi-gateway",
-  "colony_name": "Kimi-K2 Gateway",
-  "role": "llm-gateway",
-  "description": "High-capability LLM gateway powered by Kimi-K2 (1M context, MoE 1T params)",
+  "colony_id": "kimi-k2",
+  "colony_name": "Kimi-K2",
+  "role": "colony",
+  "archetype": "mind",
+  "layer": 3,
+  "entity": "MIND (The AZR — Absolute Zero Reasoner)",
+  "description": "1T parameter MoE language model — the cognitive interpreter and reasoning engine of the hive",
   "hive": "sovereign-hive",
-  "queen": "https://github.com/tehutirael/sovereign-hive-meta",
-  "repo": "https://github.com/tehutirael/kimi-k2",
-  "guilds": ["llm", "gateway", "reasoning"],
+  "queen": "https://github.com/TehutiRaEl/-sovereign-hive-meta",
+  "repo": "https://github.com/TehutiRaEl/Kimi-K2",
+  "guilds": ["reasoning", "language", "inference"],
   "health_endpoint": "/colony/health",
   "manifest_endpoint": "/colony/manifest",
-  "agents": ["kimi-agent", "reasoning-agent"],
-  "capabilities": ["long-context", "reasoning", "code-generation", "1M-context", "MoE-1T"],
-  "server_port": 3333,
-  "constitution_version": "1.0.0"
+  "agents": ["azr-reasoner", "language-model", "inference-engine"],
+  "capabilities": ["chain-of-thought", "tool-use", "agentic-tasks", "multilingual", "code-generation"],
+  "stack": "Model/MoE (1T params, 32B activated, Muon optimizer)",
+  "mission": "MIND of the Trinity — processes data, forms understanding, generates insights. Proposes, solves, verifies, updates.",
+  "constitution_version": "2.0.0",
+  "soul_source": "https://raw.githubusercontent.com/TehutiRaEl/-sovereign-hive-meta/main/soul.md",
+  "hierarchy": {
+    "born": "first",
+    "trinity_role": "mind",
+    "kemetic_analog": "Thoth",
+    "offline_state": "stronger, faster, more coherent"
+  }
 }
