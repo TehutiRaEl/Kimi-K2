@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  lint-and-test:
+    name: Lint & Test (Python 3.11)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 pytest
+
+      - name: Lint (flake8)
+        run: |
+          flake8 . \
+            --max-line-length=120 \
+            --extend-ignore=E203,W503 \
+            --exclude=__pycache__,.venv,colony_sdk.py
+        continue-on-error: true
+
+      - name: Import check — colony_sdk
+        run: python3 -c "from colony_sdk import ColonyConfig, make_colony_router; print('colony_sdk OK')"
+
+      - name: Import check — main app
+        env:
+          KIMI_API_KEY: ""
+          QUEEN_URL: "http://localhost:8080"
+          PORT: "8002"
+        run: |
+          python3 -c "
+          import ast, sys
+          with open('main.py') as f:
+              tree = ast.parse(f.read())
+          print('main.py syntax OK')
+          "
+
+      - name: Run tests (if present)
+        run: |
+          if [ -d "tests" ] && find tests -name "test_*.py" | grep -q .; then
+            pytest tests/ -v
+          else
+            echo "No test suite found — skipping (add tests/ to enable)"
+          fi

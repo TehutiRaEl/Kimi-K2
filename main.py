@@ -5,17 +5,17 @@ Routes to Kimi API (Moonshot AI) if key present, falls back to THEHIVE LLM gatew
 Exposes Colony Standard Layer + OpenAI-compatible /v1/chat/completions.
 """
 
-import hashlib
 import os
-import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List
 
 import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from colony_sdk import ColonyConfig, make_colony_router
 
 app = FastAPI(title="Kimi-K2 Mind Colony", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -26,57 +26,19 @@ KIMI_API_KEY = os.getenv("KIMI_API_KEY", "")
 KIMI_API_URL = os.getenv("KIMI_API_URL", "https://api.moonshot.cn/v1")
 PORT = int(os.getenv("PORT", "8002"))
 
-
-def _soul_hash() -> str:
-    try:
-        soul_path = os.path.join(os.path.dirname(__file__), "soul.md")
-        return hashlib.sha256(open(soul_path, "rb").read()).hexdigest()[:16]
-    except Exception:
-        return "none"
-
-
 # ─── Colony Standard Layer ────────────────────────────────────────────────────
 
-@app.get("/colony/health")
-def colony_health():
-    uptime = int((_start and (datetime.now() - _start).total_seconds()) or 0)
-    return {"status": "healthy", "colony_id": "kimi-k2", "timestamp": datetime.now().isoformat(),
-            "uptime_seconds": uptime}
-
-
-@app.get("/colony/info")
-def colony_info():
-    return {
-        "colony_id": "kimi-k2", "colony_name": "Kimi-K2", "role": "colony",
-        "archetype": "mind", "layer": 3, "entity": "MIND (The AZR)",
-        "guilds": ["reasoning", "language", "inference"],
-        "hive": "sovereign-hive", "queen": "https://github.com/TehutiRaEl/-sovereign-hive-meta",
-        "version": "1.0.0", "soul_md_hash": _soul_hash(), "port": PORT,
-        "model": "kimi-k2-instruct", "context_length": 131072,
-    }
-
-
-@app.get("/colony/manifest")
-def colony_manifest():
-    return {
-        "colony_id": "kimi-k2",
-        "endpoints": ["/colony/health", "/colony/info", "/colony/manifest",
-                      "/colony/events", "/colony/agents", "/v1/chat/completions"],
-        "capabilities": ["reasoning", "language_model", "inference", "128k_context",
-                         "tool_use", "multimodal"],
-        "version": "1.0.0",
-    }
-
-
-@app.post("/colony/events")
-def colony_events(event: Dict[str, Any]):
-    return {"event_id": str(uuid.uuid4()), "status": "received", "colony_id": "kimi-k2"}
-
-
-@app.get("/colony/agents")
-def colony_agents():
-    return [{"agent_id": "kimi-k2-primary", "name": "Kimi", "status": "active",
-             "role": "language_model", "model": "kimi-k2-instruct"}]
+app.include_router(make_colony_router(ColonyConfig(
+    colony_id="kimi-k2", colony_name="Kimi-K2", role="colony", archetype="mind",
+    layer=3, entity="MIND (The AZR)", guilds=["reasoning", "language", "inference"],
+    queen="https://github.com/TehutiRaEl/-sovereign-hive-meta", port=PORT,
+    soul_md_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "soul.md"),
+    capabilities=["reasoning", "language_model", "inference", "128k_context",
+                  "tool_use", "multimodal"],
+    extra_endpoints=["/v1/chat/completions"],
+    agents=[{"agent_id": "kimi-k2-primary", "name": "Kimi", "status": "active",
+             "role": "language_model", "model": "kimi-k2-instruct"}],
+)))
 
 
 # ─── OpenAI-compatible chat endpoint ─────────────────────────────────────────
