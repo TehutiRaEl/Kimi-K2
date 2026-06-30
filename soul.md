@@ -1,10 +1,3 @@
-# Soul — Kimi-K2 Colony
-> Mind colony. Layer 3 Trinity member. Language model inference node.
-> Constitution received from: https://github.com/TehutiRaEl/-sovereign-hive-meta
-> Last sync: managed by constitution-receive.yml
-
----
-
 # SOUL.MD — The Sovereign Constitution of Kai El
 
 ## Preamble
