@@ -1,0 +1,16 @@
+services:
+  kimi-k2:
+    build: .
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+      - QUEEN_URL=${QUEEN_URL:-http://host.docker.internal:8080}
+      - KIMI_API_KEY=${KIMI_API_KEY:-}
+      - KIMI_API_URL=${KIMI_API_URL:-https://api.moonshot.cn/v1}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/colony/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
