@@ -5,18 +5,36 @@ Import make_colony_router() and mount it in any FastAPI app.
 
 Usage:
     from colony_sdk import ColonyConfig, make_colony_router
-    app.include_router(make_colony_router(ColonyConfig(colony_id="nar2", ...)))
+    app.include_router(make_colony_router(ColonyConfig(colony_id="kimi-k2", ...)))
 """
 
 import hashlib
+import hmac
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
+
+# HMAC secret — set HIVE_JWT_SECRET to the same value as THEHIVE's jwt_secret_key.
+# If unset, HMAC verification is skipped (permissive mode for local dev).
+_HIVE_SECRET = os.getenv("HIVE_JWT_SECRET", "").encode()
+
+
+def _verify_hive_signature(request: Request, body: bytes) -> None:
+    """Reject requests whose X-Hive-Signature doesn't match HMAC-SHA256(body, HIVE_JWT_SECRET)."""
+    if not _HIVE_SECRET:
+        return  # permissive — no secret configured
+    sig_header = request.headers.get("X-Hive-Signature", "")
+    if not sig_header.startswith("sha256="):
+        raise HTTPException(status_code=401, detail="Missing X-Hive-Signature header")
+    expected = "sha256=" + hmac.new(_HIVE_SECRET, body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig_header, expected):
+        raise HTTPException(status_code=401, detail="Invalid hive signature")
 
 _START_MONOTONIC = time.monotonic()
 _START_DT = datetime.now()
@@ -113,7 +131,13 @@ def make_colony_router(config: ColonyConfig) -> APIRouter:
         }
 
     @router.post("/events", response_model=EventResponse)
-    def events(event: HiveEvent):
+    async def events(request: Request):
+        body = await request.body()
+        _verify_hive_signature(request, body)
+        try:
+            event = HiveEvent.model_validate_json(body)
+        except Exception:
+            raise HTTPException(status_code=422, detail="Invalid event body")
         return EventResponse(
             event_id=str(uuid.uuid4()),
             status="received",
