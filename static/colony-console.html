@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kimi-K2 — Colony Console</title>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --panel: #0f1523;
+      --border: #1a2540;
+      --accent: #6366f1;
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --dim: #334155;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .colony-logo { font-size: 22px; line-height: 1; }
+    h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
+    .subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .header-right { margin-left: auto; text-align: right; }
+    .timestamp { font-size: 10px; color: var(--dim); }
+
+    main { padding: 24px; max-width: 900px; }
+
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .status-dot {
+      width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-dot.healthy { background: var(--success); animation: pulse 2s infinite; }
+    .status-dot.unreachable { background: var(--danger); }
+    .status-dot.loading { background: var(--dim); animation: pulse 1s infinite; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .status-text { font-size: 15px; font-weight: 700; }
+    .status-text.healthy { color: var(--success); }
+    .status-text.unreachable { color: var(--danger); }
+    .status-text.loading { color: var(--muted); }
+
+    .refresh-btn {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 6px 14px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .refresh-btn:hover { background: #4f52d0; }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .panel-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .kv { display: grid; grid-template-columns: 100px 1fr; gap: 4px 8px; font-size: 11px; }
+    .kv dt { color: var(--muted); }
+    .kv dd { color: var(--text); word-break: break-word; }
+
+    .agents-list { list-style: none; font-size: 11px; }
+    .agents-list li { padding: 4px 0; border-bottom: 1px solid #0a0e1a; }
+    .agents-list li:last-child { border-bottom: none; }
+    .empty-note { color: var(--dim); font-size: 11px; }
+
+    footer { margin-top: 28px; padding: 0 24px 24px; font-size: 10px; color: var(--dim); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="colony-logo" aria-hidden>⬡</span>
+  <div>
+    <h1>KIMI-K2 — COLONY CONSOLE</h1>
+    <p class="subtitle">Mind colony — language model gateway · Sovereign Hive federation</p>
+  </div>
+  <div class="header-right">
+    <div class="timestamp" id="last-updated">—</div>
+  </div>
+</header>
+
+<main>
+  <div class="status-banner" role="status" aria-live="polite">
+    <span class="status-dot loading" id="status-dot"></span>
+    <span class="status-text loading" id="status-text">checking…</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="refresh()">↻ Refresh</button>
+  </div>
+
+  <div class="panel-grid">
+    <div class="panel-card">
+      <div class="panel-title">Identity</div>
+      <dl class="kv" id="info-kv"><dt>colony</dt><dd>loading…</dd></dl>
+    </div>
+    <div class="panel-card">
+      <div class="panel-title">Manifest</div>
+      <dl class="kv" id="manifest-kv"><dt>endpoints</dt><dd>loading…</dd></dl>
+    </div>
+    <div class="panel-card">
+      <div class="panel-title">Agents</div>
+      <ul class="agents-list" id="agents-list"><li class="empty-note">loading…</li></ul>
+    </div>
+  </div>
+</main>
+
+<footer>Sovereign Hive Colony Standard Layer · Auto-refresh every 30s</footer>
+
+<script>
+  const POLL_MS = 30_000;
+  const base = location.origin;
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatUptime(s) {
+    if (s === undefined || s === null) return '—';
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
+    return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
+  }
+
+  async function fetchJSON(path) {
+    try {
+      const r = await fetch(base + path, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) {
+      return { __error: e.message };
+    }
+  }
+
+  async function refresh() {
+    document.getElementById('refresh-btn').textContent = '↻ Checking…';
+    document.getElementById('refresh-btn').disabled = true;
+
+    const [health, info, manifest, agents] = await Promise.all([
+      fetchJSON('/colony/health'),
+      fetchJSON('/colony/info'),
+      fetchJSON('/colony/manifest'),
+      fetchJSON('/colony/agents'),
+    ]);
+
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    if (health.__error) {
+      dot.className = 'status-dot unreachable';
+      text.className = 'status-text unreachable';
+      text.textContent = 'unreachable — ' + health.__error;
+    } else {
+      const ok = health.status === 'healthy';
+      dot.className = 'status-dot ' + (ok ? 'healthy' : 'unreachable');
+      text.className = 'status-text ' + (ok ? 'healthy' : 'unreachable');
+      text.textContent = (health.status || 'unknown') + (health.uptime_seconds !== undefined ? ' · uptime ' + formatUptime(health.uptime_seconds) : '');
+    }
+
+    document.getElementById('info-kv').innerHTML = info.__error
+      ? `<dt>error</dt><dd>${esc(info.__error)}</dd>`
+      : Object.entries(info).map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(Array.isArray(v) ? v.join(', ') : v)}</dd>`).join('');
+
+    document.getElementById('manifest-kv').innerHTML = manifest.__error
+      ? `<dt>error</dt><dd>${esc(manifest.__error)}</dd>`
+      : `<dt>endpoints</dt><dd>${esc((manifest.endpoints||[]).join(', '))}</dd><dt>capabilities</dt><dd>${esc((manifest.capabilities||[]).join(', '))}</dd>`;
+
+    const agentsList = document.getElementById('agents-list');
+    if (agents.__error) {
+      agentsList.innerHTML = `<li class="empty-note">${esc(agents.__error)}</li>`;
+    } else if (Array.isArray(agents) && agents.length) {
+      agentsList.innerHTML = agents.map(a => `<li>${esc(a.name || a.agent_id)} — ${esc(a.status)}</li>`).join('');
+    } else {
+      agentsList.innerHTML = '<li class="empty-note">No active agents.</li>';
+    }
+
+    document.getElementById('last-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+    document.getElementById('refresh-btn').textContent = '↻ Refresh';
+    document.getElementById('refresh-btn').disabled = false;
+  }
+
+  refresh();
+  setInterval(refresh, POLL_MS);
+</script>
+</body>
+</html>

@@ -7,12 +7,14 @@ Exposes Colony Standard Layer + OpenAI-compatible /v1/chat/completions.
 
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from colony_sdk import ColonyConfig, make_colony_router
@@ -39,6 +41,12 @@ app.include_router(make_colony_router(ColonyConfig(
     agents=[{"agent_id": "kimi-k2-primary", "name": "Kimi", "status": "active",
              "role": "language_model", "model": "kimi-k2-instruct"}],
 )))
+
+
+@app.get("/colony-console.html", include_in_schema=False)
+async def colony_console():
+    """Single-colony status dashboard, served for THEHIVE's command-center zoom-in iframe."""
+    return FileResponse(Path(__file__).parent / "static" / "colony-console.html")
 
 
 # ─── OpenAI-compatible chat endpoint ─────────────────────────────────────────
