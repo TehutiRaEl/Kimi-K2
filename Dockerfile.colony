@@ -1,5 +1,0 @@
-FROM node:20-alpine
-WORKDIR /app
-COPY colony.json colony-server.js soul.md* ./
-EXPOSE 3333
-CMD ["node", "colony-server.js"]
